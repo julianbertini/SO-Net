@@ -65,7 +65,7 @@ if __name__=='__main__':
         # model.segmenter.load_state_dict(torch.load(folder + model_epoch + '_' + model_acc + '_net_segmenter.pth'))
 
         best_iou = 0
-        for epoch in range(601):
+        for epoch in range(401):
 
             epoch_iter = 0
             for i, data in enumerate(trainloader):
