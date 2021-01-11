@@ -13,11 +13,12 @@ import torchvision
 import matplotlib.pyplot as plt
 import h5py
 import json
+from sklearn.model_selection import KFold
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from .augmentation import *
+from augmentation import *
 
 
 def load_h5_data_label_seg(h5_filename):
@@ -27,8 +28,25 @@ def load_h5_data_label_seg(h5_filename):
     seg = f['pid'][:]
     return (data, label, seg)
 
+def load_file_names(root, name):
+    """Opens file containing file names of data and returns them as
+       a numpy array to be used in train.py for k-fold cross-validation
+
+        root - root folder housing data
+        name - name of the file
+    """
+    filenames = []
+    with open(os.path.join(root, name), 'r') as f:
+        for line in f:
+            filenames.append(line[:-2])
+
+    return np.asarray(filenames)
+
 
 def make_dataset_shapenet_normal(root, mode):
+    """ Gets the shuffled names of the files that
+    will be considered as part of the training or testing split
+    """
     if mode == 'train':
         f = open(os.path.join(root, 'train_test_split', 'shuffled_train_file_list.json'), 'r')
         file_name_list = json.load(f)
@@ -98,9 +116,9 @@ class FarthestSampler:
 
 
 class ShapeNetLoader(data.Dataset):
-    def __init__(self, root, mode, opt):
+    def __init__(self, file_names, mode, opt):
         super(ShapeNetLoader, self).__init__()
-        self.root = root
+        self.root = opt.root
         self.opt = opt
         self.mode = mode
 
@@ -108,16 +126,17 @@ class ShapeNetLoader(data.Dataset):
         self.rows = round(math.sqrt(self.node_num))
         self.cols = self.rows
 
-        self.dataset = make_dataset_shapenet_normal(self.root, self.mode)
+        # self.dataset is a list if file names corresponding to the data files
+        self.dataset = file_names 
         # ensure there is no batch-1 batch
-        if len(self.dataset) % self.opt.batch_size == 1:
+        while np.size(self.dataset) % self.opt.batch_size != 0:
+            current_size = np.size(self.dataset)
+            print('Reducing dataset so it is divisible by batch_size...')
+            print('Reducing from %d to %d' % (current_size, current_size-1))
             self.dataset.pop()
 
         # load the folder-category txt
-        self.categories = ['Airplane', 'Bag', 'Cap', 'Car', 'Chair', 'Earphone', 'Guitar', 'Knife', 'Lamp', 'Laptop',
-                           'Motorbike', 'Mug', 'Pistol', 'Rocket', 'Skateboard', 'Table']
-        self.folders = ['02691156', '02773838', '02954340', '02958343', '03001627', '03261776', '03467517', '03624134',
-                        '03636649', '03642806', '03790512', '03797390', '03948459', '04099429', '04225987', '04379243']
+        self.categories = ['Vessel', 'Aneurysm']
 
         # kNN search on SOM nodes
         self.knn_builder = KNNBuilder(self.opt.som_k)
@@ -129,15 +148,16 @@ class ShapeNetLoader(data.Dataset):
         return len(self.dataset)
 
     def __getitem__(self, index):
-        # pointnet++ dataset
-        file = self.dataset[index][11:]
+        file = self.dataset[index]
         data = np.load(os.path.join(self.root, file + '_%dx%d.npz' % (self.rows, self.cols)))
         pc_np = data['pc']
         sn_np = data['sn']
+        # ground-truth label (e.g. Aneurysm (1) or Vessel (0))
         seg_np = data['part_label']
+        # som node points
         som_node_np = data['som_node']
-        label = self.folders.index(file[0:8])
-        assert(label >= 0)
+        #label = self.folders.index(file[0:8])
+        #assert(label >= 0)
 
         if self.opt.input_pc_num < pc_np.shape[0]:
             chosen_idx = np.random.choice(pc_np.shape[0], self.opt.input_pc_num, replace=False)
@@ -195,7 +215,7 @@ class ShapeNetLoader(data.Dataset):
             som_knn_I = torch.from_numpy(np.arange(start=0, stop=self.opt.node_num, dtype=np.int64).reshape(
                 (self.opt.node_num, 1)))  # node_num x 1
 
-        return pc, sn, label, seg, som_node, som_knn_I
+        return pc, sn, seg, som_node, som_knn_I
 
 
 
@@ -214,9 +234,8 @@ if __name__=="__main__":
     opt = VirtualOpt()
     trainset = ShapeNetLoader('/ssd/dataset/shapenet_part_seg_hdf5_data/', 'train', opt)
     print(len(trainset))
-    pc, label, seg, som_node = trainset[10]
+    pc, sn, seg, som_node = trainset[10]
 
-    print(label)
     print(seg)
 
     x_np = pc.numpy().transpose()
