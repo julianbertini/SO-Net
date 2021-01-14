@@ -18,7 +18,7 @@ from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from augmentation import *
+from .augmentation import *
 
 
 def load_h5_data_label_seg(h5_filename):
@@ -38,7 +38,7 @@ def load_file_names(root, name):
     filenames = []
     with open(os.path.join(root, name), 'r') as f:
         for line in f:
-            filenames.append(line[:-2])
+            filenames.append(line[:-1])
 
     return np.asarray(filenames)
 
@@ -118,7 +118,7 @@ class FarthestSampler:
 class ShapeNetLoader(data.Dataset):
     def __init__(self, file_names, mode, opt):
         super(ShapeNetLoader, self).__init__()
-        self.root = opt.root
+        self.root = opt.dataroot
         self.opt = opt
         self.mode = mode
 
@@ -129,11 +129,11 @@ class ShapeNetLoader(data.Dataset):
         # self.dataset is a list if file names corresponding to the data files
         self.dataset = file_names 
         # ensure there is no batch-1 batch
-        while np.size(self.dataset) % self.opt.batch_size != 0:
+        if np.size(self.dataset) % self.opt.batch_size == 1:
             current_size = np.size(self.dataset)
-            print('Reducing dataset so it is divisible by batch_size...')
+            print('Reducing dataset so there is no batch of 1...')
             print('Reducing from %d to %d' % (current_size, current_size-1))
-            self.dataset.pop()
+            self.dataset = self.dataset[:-1]
 
         # load the folder-category txt
         self.categories = ['Vessel', 'Aneurysm']
@@ -149,15 +149,19 @@ class ShapeNetLoader(data.Dataset):
 
     def __getitem__(self, index):
         file = self.dataset[index]
-        data = np.load(os.path.join(self.root, file + '_%dx%d.npz' % (self.rows, self.cols)))
+        data = np.load(os.path.join(self.root, file))
         pc_np = data['pc']
         sn_np = data['sn']
         # ground-truth label (e.g. Aneurysm (1) or Vessel (0))
         seg_np = data['part_label']
         # som node points
         som_node_np = data['som_node']
-        #label = self.folders.index(file[0:8])
-        #assert(label >= 0)
+        # label is an integer representing the type of image (e.g. airplane, or car) for ShapeNet
+        # For aneurysm, we only have 1 type of image: vessel segments with aneurysms.
+        # So label will always be 0, denoting this.
+        label = 0
+        assert(label >= 0)
+
 
         if self.opt.input_pc_num < pc_np.shape[0]:
             chosen_idx = np.random.choice(pc_np.shape[0], self.opt.input_pc_num, replace=False)
@@ -215,7 +219,7 @@ class ShapeNetLoader(data.Dataset):
             som_knn_I = torch.from_numpy(np.arange(start=0, stop=self.opt.node_num, dtype=np.int64).reshape(
                 (self.opt.node_num, 1)))  # node_num x 1
 
-        return pc, sn, seg, som_node, som_knn_I
+        return pc, sn, label, seg, som_node, som_knn_I
 
 
 
@@ -228,13 +232,16 @@ if __name__=="__main__":
     class VirtualOpt():
         def __init__(self):
             self.load_all_data = False
+            self.root = '/content/drive/MyDrive/data/IntrA/annotated/ad'
             self.input_pc_num = 8000
             self.batch_size = 20
             self.node_num = 49
+            self.som_k = 9
     opt = VirtualOpt()
-    trainset = ShapeNetLoader('/ssd/dataset/shapenet_part_seg_hdf5_data/', 'train', opt)
+    filenames = load_file_names(opt.root, 'file_name_list.txt')
+    trainset = ShapeNetLoader(filenames, 'train', opt)
     print(len(trainset))
-    pc, sn, seg, som_node = trainset[10]
+    pc, sn, label, seg, som_node, som_knn_I = trainset[0]
 
     print(seg)
 
@@ -245,4 +252,7 @@ if __name__=="__main__":
     ax.scatter(x_np[:, 0].tolist(), x_np[:, 1].tolist(), x_np[:, 2].tolist(), s=1)
     ax.scatter(node_np[:, 0].tolist(), node_np[:, 1].tolist(), node_np[:, 2].tolist(), s=6, c='r')
     plt.show()
+
+
+
 

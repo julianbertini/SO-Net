@@ -1,8 +1,8 @@
 import argparse
 import os
-from util import util
 import torch
-
+import pathlib
+from shutil import rmtree
 
 class Options():
     def __init__(self):
@@ -10,16 +10,17 @@ class Options():
         self.initialized = False
 
     def initialize(self):
-        self.parser.add_argument('--gpu_id', type=int, default=0, help='gpu id: e.g. 0, 1, 2. -1 is no GPU')
+        self.parser.add_argument('--gpu_id', type=int, default=0, help='gpu id: e.g. 0, 1. -1 is no GPU')
 
-        self.parser.add_argument('--dataset', type=str, default='shrec', help='modelnet / shrec')
-        self.parser.add_argument('--dataroot', default='/ssd/jiaxin/datasets/SHREC2016/', help='path to images & laser point clouds')
-        self.parser.add_argument('--classes', type=int, default=55, help='ModelNet40 or ModelNet10')
+        self.parser.add_argument('--dataset', type=str, default='shapenet', help='shapenet')
+        self.parser.add_argument('--dataroot', default='/ssd/dataset/shapenetcore_partanno_segmentation_benchmark_v0_normal/', help='path to images & laser point clouds')
+        self.parser.add_argument('--classes', type=int, default=50, help='ModelNet40 or ModelNet10')
         self.parser.add_argument('--name', type=str, default='train', help='name of the experiment. It decides where to store samples and models')
-        self.parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are saved here')
+
+        self.parser.add_argument('--checkpoints_dir', type=str, default=pathlib.Path(pathlib.Path(__file__).parent.absolute(), 'checkpoints'), help='models are saved here')
 
         self.parser.add_argument('--batch_size', type=int, default=8, help='input batch size')
-        self.parser.add_argument('--input_pc_num', type=int, default=5000, help='# of input points')
+        self.parser.add_argument('--input_pc_num', type=int, default=1024, help='# of input points')
         self.parser.add_argument('--surface_normal', type=bool, default=True, help='use surface normal in the pc input')
         self.parser.add_argument('--nThreads', default=8, type=int, help='# threads for loading data')
 
@@ -34,21 +35,17 @@ class Options():
         self.parser.add_argument('--dropout', type=float, default=0.6, help='probability of an element to be zeroed')
         self.parser.add_argument('--node_num', type=int, default=64, help='som node number')
         self.parser.add_argument('--k', type=int, default=3, help='k nearest neighbor')
+        # '/ssd/open-source/so-net-full/autoencoder/checkpoints/save/shapenetpart/183_0.034180_net_encoder.pth'
         self.parser.add_argument('--pretrain', type=str, default=None, help='pre-trained encoder dict path')
         self.parser.add_argument('--pretrain_lr_ratio', type=float, default=1, help='learning rate ratio between pretrained encoder and classifier')
 
-        self.parser.add_argument('--som_k', type=int, default=0, help='k nearest neighbor of SOM nodes searching on SOM nodes')
-        self.parser.add_argument('--som_k_type', type=str, default='avg', help='avg / center')
+        self.parser.add_argument('--som_k', type=int, default=9, help='k nearest neighbor of SOM nodes searching on SOM nodes')
+        self.parser.add_argument('--som_k_type', type=str, default='center', help='avg / center')
 
         self.parser.add_argument('--random_pc_dropout_lower_limit', type=float, default=1, help='keep ratio lower limit')
         self.parser.add_argument('--bn_momentum', type=float, default=0.1, help='normalization momentum, typically 0.1. Equal to (1-m) in TF')
         self.parser.add_argument('--bn_momentum_decay_step', type=int, default=None, help='BN momentum decay step. e.g, 0.5->0.01.')
         self.parser.add_argument('--bn_momentum_decay', type=float, default=0.6, help='BN momentum decay step. e.g, 0.5->0.01.')
-
-        self.parser.add_argument('--rot_horizontal', type=bool, default=False, help='Rotation augmentation around vertical axis.')
-        self.parser.add_argument('--rot_perturbation', type=bool, default=False, help='Small rotation augmentation around 3 axis.')
-        self.parser.add_argument('--translation_perturbation', type=bool, default=False, help='Small translation augmentation around 3 axis.')
-
 
 
         self.initialized = True
@@ -70,7 +67,15 @@ class Options():
 
         # save to the disk
         expr_dir =  os.path.join(self.opt.checkpoints_dir, self.opt.name)
-        util.mkdirs(expr_dir)
+        if os.path.isdir(expr_dir):
+            res = input('checkpoint dir %s is being replaced; are you sure? y/n' % expr_dir)
+            if res == 'y':
+                rmtree(expr_dir)
+            elif res == 'n':
+                exit('Please choose a different name for experiment using --name option.')
+            else:
+                exit('Please answer y/n.')
+        os.makedirs(expr_dir)
         file_name = os.path.join(expr_dir, 'opt.txt')
         with open(file_name, 'wt') as opt_file:
             opt_file.write('------------ Options -------------\n')

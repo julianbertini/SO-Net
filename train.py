@@ -8,6 +8,7 @@ opt = Options().parse()  # set CUDA_VISIBLE_DEVICES before import torch
 
 import torch
 import torchvision
+from torch.utils.tensorboard import SummaryWriter
 from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
@@ -17,11 +18,12 @@ import numpy as np
 
 from models import losses
 from models.segmenter import Model
-from data.shapenet_loader import ShapeNetLoader
-from data.shapenet_loader import load_file_names
+from data.intrA_loader import ShapeNetLoader
+from data.intrA_loader import load_file_names
 from util.visualizer import Visualizer
 from sklearn.model_selection import KFold
 
+runs_path = '/content/drive/MyDrive/code/SO-Net/runs'
 
 if __name__=='__main__':
     
@@ -50,7 +52,8 @@ if __name__=='__main__':
         testset = ShapeNetLoader(test_file_names, 'test', opt)
         testloader = torch.utils.data.DataLoader(testset, batch_size=opt.batch_size, shuffle=False, num_workers=opt.nThreads)
 
-        visualizer = Visualizer(opt)
+        writer = SummaryWriter(runs_path)
+        #visualizer = Visualizer(opt)
 
         # create model, optionally load pre-trained model
         model = Model(opt)
@@ -68,6 +71,7 @@ if __name__=='__main__':
         for epoch in range(401):
 
             epoch_iter = 0
+            print("Starting epoch %d..." % epoch)
             for i, data in enumerate(trainloader):
                 iter_start_time = time.time()
                 epoch_iter += opt.batch_size
@@ -83,14 +87,20 @@ if __name__=='__main__':
 
                     errors = model.get_current_errors()
 
-                    visualizer.print_current_errors(epoch, epoch_iter, errors, t)
-                    visualizer.plot_current_errors(epoch, float(epoch_iter) / dataset_size, opt, errors)
+                    writer.add_scalar("train_loss_seg", errors["train_loss_seg"], epoch)
+                    writer.add_scalar("train_accuracy_seg", errors["train_accuracy_seg"], epoch)
+                    writer.add_scalar("test_loss_seg", errors["test_loss_seg"], epoch)
+                    writer.add_scalar("test_acc_seg", errors["test_acc_seg"], epoch)
+                    writer.add_scalar("test_iou", errors["test_iou"], epoch)
+
+                    #visualizer.print_current_errors(epoch, epoch_iter, errors, t)
+                    #visualizer.plot_current_errors(epoch, float(epoch_iter) / dataset_size, opt, errors)
 
                     # print(model.autoencoder.encoder.feature)
                     # visuals = model.get_current_visuals()
                     # visualizer.display_current_results(visuals, epoch, i)
 
-            # test network
+            # test network and visualize
             if epoch >= 0 and epoch%1==0:
                 batch_amount = 0
                 model.test_loss_segmenter.data.zero_()
@@ -112,13 +122,12 @@ if __name__=='__main__':
                     model.test_accuracy_segmenter += test_accuracy_segmenter * input_label.size()[0]
 
                     # segmentation iou
-                    test_iou_batch = losses.compute_iou(model.score_segmenter.cpu().data, model.input_seg.cpu().data, model.input_label.cpu().data, visualizer, opt, input_pc.cpu().data)
+                    test_iou_batch = losses.compute_iou(model.score_segmenter.cpu().data, model.input_seg.cpu().data, model.input_label.cpu().data, opt, input_pc.cpu().data)
                     model.test_iou += test_iou_batch * input_label.size()[0]
 
                     # print(test_iou_batch)
                     # print(model.score_segmenter.size())
 
-                print(batch_amount)
                 model.test_loss_segmenter /= batch_amount
                 model.test_accuracy_segmenter /= batch_amount
                 model.test_iou /= batch_amount
@@ -140,6 +149,9 @@ if __name__=='__main__':
             # if epoch%20==0 and epoch>0:
             #     print("Saving network...")
             #     model.save_network(model.classifier, 'cls', '%d' % epoch, opt.gpu_id)
+        
+        writer.flush()
+        writer.close()
 
 
 

@@ -72,22 +72,7 @@ def visualize_pc_seg(score, seg, label, visualizer, opt, input_pc, batch_num):
 
 def compute_iou_np_array(score, seg, label, visualizer, opt, input_pc):
     part_label = [
-        [0, 1, 2, 3],
-        [4, 5],
-        [6, 7],
-        [8, 9, 10, 11],
-        [12, 13, 14, 15],
-        [16, 17, 18],
-        [19, 20, 21],
-        [22, 23],
-        [24, 25, 26, 27],
-        [28, 29],
-        [30, 31, 32, 33, 34, 35],
-        [36, 37],
-        [38, 39, 40],
-        [41, 42, 43],
-        [44, 45, 46],
-        [47, 48, 49]
+        [0, 1]
     ]
 
     _, seg_predicted = torch.max(score, dim=1)  # BxN
@@ -116,30 +101,19 @@ def compute_iou_np_array(score, seg, label, visualizer, opt, input_pc):
     return iou_np
 
 
-def compute_iou(score, seg, label, visualizer, opt, input_pc):
+def compute_iou(score, seg, label, opt, input_pc):
     '''
     :param score: BxCxN tensor
     :param seg: BxN tensor
     :return:
+
+    Update by JB 01/13/2021: remove visualizer dependency
+    Update by JB 01/13/2021: change part_label to only include vessel/aneurysm
+    Update by JB 01/13/2021: fix intersection and union calculations
     '''
 
     part_label = [
-        [0, 1, 2, 3],
-        [4, 5],
-        [6, 7],
-        [8, 9, 10, 11],
-        [12, 13, 14, 15],
-        [16, 17, 18],
-        [19, 20, 21],
-        [22, 23],
-        [24, 25, 26, 27],
-        [28, 29],
-        [30, 31, 32, 33, 34, 35],
-        [36, 37],
-        [38, 39, 40],
-        [41, 42, 43],
-        [44, 45, 46],
-        [47, 48, 49]
+        [0, 1]
     ]
 
     _, seg_predicted = torch.max(score, dim=1)  # BxN
@@ -151,9 +125,10 @@ def compute_iou(score, seg, label, visualizer, opt, input_pc):
         for part in part_label[label[i]]:
             gt = seg[i] == part
             predict = seg_predicted[i] == part
-
-            intersection = (gt + predict) == 2
-            union = (gt + predict) >= 1
+            intersection = torch.logical_and(gt, predict)
+            #intersection = (gt + predict) == 2
+            union = torch.logical_or(gt, predict)
+            #union = (gt + predict) >= 1
 
             # print(intersection)
             # print(union)
@@ -176,11 +151,11 @@ def compute_iou(score, seg, label, visualizer, opt, input_pc):
             iou_pc.append(iou_part)
 
         # debug to see what happened
-        if vis_flag:
-            print('============')
-            print(iou_pc)
-            print(label[i])
-            visualize_pc_seg(score[i], seg[i], label[i], visualizer, opt, input_pc[i], i)
+        # if vis_flag:
+        #     print('============')
+        #     print(iou_pc)
+        #     print(label[i])
+        #     visualize_pc_seg(score[i], seg[i], label[i], visualizer, opt, input_pc[i], i)
 
         iou_batch.append(np.asarray(iou_pc).mean())
 
