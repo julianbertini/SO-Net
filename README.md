@@ -3,7 +3,14 @@
 **SO-Net: Self-Organizing Network for Point Cloud Analysis.** CVPR 2018, Salt Lake City, USA
 Jiaxin Li, Ben M. Chen, Gim Hee Lee, National University of Singapore
 
+## Changes from the original repository
+The changes made in this repository from the orignial deal with 2 main areas:
 
+1. **Google Collab**: The code in this repository has been adapted to work under the Google Collab environment. This includes a change of the visualization method to use TensorBoard. 
+
+2. **Aneurysm Data**: This code has also been adapted to the specific use case of segmenting 3D reconstructions of aneurysms based on the IntrA aneurysm dataset. This includes various changes to the data pre-processing pipeline. 
+
+> **Note**: no changes were based to the fundamental model architecture. All changes revolved around data pre-processing and training.
 
 ## Introduction
 SO-Net is a deep network architecture that processes 2D/3D point clouds. It enables various applications including but not limited to classification, shape retrieval, segmentation, reconstruction. The arXiv version of SO-Net can be found [here](https://arxiv.org/abs/1803.04249).
