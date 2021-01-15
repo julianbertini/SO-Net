@@ -10,7 +10,7 @@ The changes made in this repository from the orignial deal with 2 main areas:
 
 2. **Aneurysm Data**: This code has also been adapted to the specific use case of segmenting 3D reconstructions of aneurysms based on the IntrA aneurysm dataset. This includes various changes to the data pre-processing pipeline. 
 
-> **Note**: no changes were based to the fundamental model architecture. All changes revolved around data pre-processing and training.
+> **Note**: no changes were made to the fundamental model architecture. All changes revolved around data pre-processing and adapting the training code.
 
 ## Introduction
 SO-Net is a deep network architecture that processes 2D/3D point clouds. It enables various applications including but not limited to classification, shape retrieval, segmentation, reconstruction. The arXiv version of SO-Net can be found [here](https://arxiv.org/abs/1803.04249).
