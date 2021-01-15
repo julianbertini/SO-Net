@@ -1,7 +1,5 @@
 
 # SO-Net for Aneurysm Segmentation
-**SO-Net: Self-Organizing Network for Point Cloud Analysis.** CVPR 2018, Salt Lake City, USA
-Jiaxin Li, Ben M. Chen, Gim Hee Lee, National University of Singapore
 
 ## Changes from the original repository
 The changes made in this repository from the orignial deal with 2 main areas:
