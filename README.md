@@ -6,7 +6,9 @@ The changes made in this repository from the orignial deal with 2 main areas:
 
 1. **Google Collab**: The code in this repository has been adapted to work under the Google Collab environment. This includes a change of the visualization method to use TensorBoard. 
 
-2. **Aneurysm Data**: This code has also been adapted to the specific use case of segmenting 3D reconstructions of aneurysms based on the IntrA aneurysm dataset. This includes various changes to the data pre-processing pipeline. 
+2. **Aneurysm Data**: This code has also been adapted to the specific use case of segmenting 3D reconstructions of aneurysms based on the IntrA aneurysm dataset. This includes various changes to the data pre-processing pipeline.
+
+Since we are using this model to segment aneurysms from healthy blood vessels, we only care about the part segmentation aspect. As such, this repository deals with that application specifically, excluding classification and other applications that can be found in the original repository.
 
 > **Note**: no changes were made to the fundamental model architecture. All changes revolved around data pre-processing and adapting the training code.
 
